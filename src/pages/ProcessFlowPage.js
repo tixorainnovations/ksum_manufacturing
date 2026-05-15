@@ -12,6 +12,7 @@ const ProcessFlowPage = () => {
   
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [showProcessMap, setShowProcessMap] = useState(false);
   const [showQcModal, setShowQcModal] = useState(null);
   const [qcForm, setQcForm] = useState({ name: '', description: '' });
   const [form, setForm] = useState({
@@ -145,7 +146,14 @@ const ProcessFlowPage = () => {
     gridTitle: { fontSize: '13px', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' },
     searchBar: { padding: '6px 10px', fontSize: '12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', width: '100px', backgroundColor: '#ffffff' },
     gridList: { flex: 1, overflowY: 'auto', padding: '8px' },
-    listItem: (sel) => ({ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', borderRadius: '8px', backgroundColor: sel ? '#eef2ff' : 'transparent', color: sel ? '#4338ca' : '#475569', fontWeight: sel ? 700 : 500, fontSize: '13px', transition: 'background 0.15s' })
+    listItem: (sel) => ({ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', borderRadius: '8px', backgroundColor: sel ? '#eef2ff' : 'transparent', color: sel ? '#4338ca' : '#475569', fontWeight: sel ? 700 : 500, fontSize: '13px', transition: 'background 0.15s' }),
+    mapModal: { width: '100%', maxWidth: '1000px', height: '85vh', backgroundColor: '#f8fafc', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    mapBody: { flex: 1, padding: '40px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' },
+    mapNode: { backgroundColor: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '16px', padding: '16px 32px', minWidth: '200px', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative', zIndex: 2, transition: 'all 0.2s' },
+    mapNodeTitle: { fontSize: '14px', fontWeight: 900, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' },
+    mapNodeSubtitle: { fontSize: '12px', fontWeight: 600, color: '#64748b', margin: '4px 0 0 0' },
+    mapLine: { width: '2px', height: '40px', backgroundColor: '#cbd5e1', margin: '0 auto', position: 'relative', zIndex: 1 },
+    mapArrow: { width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '8px solid #cbd5e1', margin: '0 auto', marginBottom: '8px' }
   };
 
   const renderStorageBox = (key, title) => {
@@ -192,14 +200,20 @@ const ProcessFlowPage = () => {
           <h1 style={S.title}>Process Flow Builder</h1>
           <p style={S.subtitle}>Configure production stages and select required storage components.</p>
         </div>
-        <button style={S.btnPrimary} onClick={() => {
-          setEditingId(null);
-          setForm({ name: '', order: '', estimatedTime: '', qcRequired: false, inputs: [], steps: [''] });
-          setShowModal(true);
-        }}>
-          <span style={{ fontSize: '22px', lineHeight: 1 }}>+</span> 
-          CREATE ASSEMBLY
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button style={S.btnSecondary} onClick={() => setShowProcessMap(true)}>
+            <span style={{ fontSize: '18px', marginRight: '8px' }}>🗺️</span> 
+            SHOW FULL PROCESS MAP
+          </button>
+          <button style={S.btnPrimary} onClick={() => {
+            setEditingId(null);
+            setForm({ name: '', order: '', estimatedTime: '', qcRequired: false, inputs: [], steps: [''] });
+            setShowModal(true);
+          }}>
+            <span style={{ fontSize: '22px', lineHeight: 1 }}>+</span> 
+            CREATE ASSEMBLY
+          </button>
+        </div>
       </div>
 
       <div style={S.workspace} className="modern-scroll">
@@ -379,6 +393,79 @@ const ProcessFlowPage = () => {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Process Map Modal */}
+      {showProcessMap && (
+        <div style={{...S.overlay, zIndex: 10000}}>
+          <div style={S.mapModal}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', zIndex: 10 }}>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0f172a', margin: '0 0 4px 0' }}>Full Process Map</h2>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>End-to-end logical flowchart from Receiving Hub to Final Assembly.</p>
+              </div>
+              <button onClick={() => setShowProcessMap(false)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: 900, cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <div style={S.mapBody} className="modern-scroll">
+              
+              {/* Receiving Hub */}
+              <div style={{...S.mapNode, borderColor: '#3b82f6', backgroundColor: '#eff6ff'}}>
+                <h4 style={{...S.mapNodeTitle, color: '#1d4ed8'}}>📦 Receiving Hub</h4>
+                <p style={S.mapNodeSubtitle}>Incoming materials & parts</p>
+              </div>
+              
+              <div style={S.mapLine} />
+              <div style={S.mapArrow} />
+
+              {/* Storage / Inventory Categories */}
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '800px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
+                {['Production Stock', 'Fabrication Store', 'Fasteners Bay', 'Sub Assembly'].map(cat => (
+                  <div key={cat} style={{...S.mapNode, padding: '12px 20px', minWidth: '140px', boxShadow: 'none'}}>
+                    <h4 style={{...S.mapNodeTitle, fontSize: '12px'}}>{cat}</h4>
+                    <p style={{...S.mapNodeSubtitle, fontSize: '11px'}}>Inventory Node</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div style={S.mapLine} />
+              <div style={S.mapArrow} />
+
+              {/* Assembly Processes */}
+              {subAssemblies.length === 0 ? (
+                <div style={{ padding: '20px', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>No assembly stages defined yet.</div>
+              ) : (
+                [...subAssemblies].sort((a,b) => a.order - b.order).map((node) => (
+                  <React.Fragment key={node.id}>
+                    <div style={{...S.mapNode, borderColor: '#8b5cf6', backgroundColor: '#f5f3ff', width: '320px'}}>
+                      <div style={{ fontSize: '10px', fontWeight: 900, color: '#6d28d9', backgroundColor: '#ede9fe', padding: '4px 8px', borderRadius: '12px', display: 'inline-block', marginBottom: '8px' }}>STAGE {node.order}</div>
+                      <h4 style={{...S.mapNodeTitle, color: '#5b21b6'}}>{node.name}</h4>
+                      <p style={S.mapNodeSubtitle}>⏱ {node.estimatedTime || 0} mins {node.qcRequired ? '• ✅ QC Required' : ''}</p>
+                      {node.inputParts?.components?.length > 0 && (
+                        <div style={{ marginTop: '12px', borderTop: '1px solid #ddd6fe', paddingTop: '12px', fontSize: '12px', color: '#6d28d9', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <strong style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Required Inputs:</strong>
+                          {node.inputParts.components.map(compId => {
+                            const item = inventoryItems.find(i => i.id === compId);
+                            return <div key={compId} style={{ padding: '4px 8px', backgroundColor: '#ffffff', borderRadius: '6px', border: '1px solid #ddd6fe', fontSize: '11px', fontWeight: 600 }}>• {item ? item.name : 'Unknown Component'}</div>
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <div style={S.mapLine} />
+                    <div style={S.mapArrow} />
+                  </React.Fragment>
+                ))
+              )}
+
+              {/* Final Assembly */}
+              <div style={{...S.mapNode, borderColor: '#10b981', backgroundColor: '#ecfdf5', padding: '20px 40px'}}>
+                <h4 style={{...S.mapNodeTitle, color: '#047857', fontSize: '16px'}}>🚀 Final Full Machine Assembly</h4>
+                <p style={S.mapNodeSubtitle}>Ready for dispatch</p>
+              </div>
+              
+            </div>
           </div>
         </div>
       )}

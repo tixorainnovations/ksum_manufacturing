@@ -1,88 +1,84 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { rolesService, SKILL_LEVELS, DEFAULT_DEPARTMENTS } from '../services/rolesService';
+import { rolesService, SKILL_LEVELS } from '../services/rolesService';
 
-// ── SKILL LEVEL BADGE ─────────────────────────────────────────────────────────
 const SkillBadge = ({ level }) => {
   const colors = {
-    Trainee:   { bg: '#f1f5f9', text: '#64748b' },
-    Junior:    { bg: '#dbeafe', text: '#1d4ed8' },
-    'Mid-level': { bg: '#d1fae5', text: '#065f46' },
-    Senior:    { bg: '#fef3c7', text: '#92400e' },
-    Lead:      { bg: '#ede9fe', text: '#5b21b6' },
+    Trainee:   { bg: '#f8fafc', text: '#64748b', border: '#e2e8f0' },
+    Junior:    { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
+    'Mid-level': { bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+    Senior:    { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+    Lead:      { bg: '#f5f3ff', text: '#7c3aed', border: '#ddd6fe' },
   };
   const s = colors[level] || colors.Trainee;
   return (
     <span style={{
-      padding: '2px 8px', borderRadius: '4px',
-      background: s.bg, color: s.text,
-      fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
-      whiteSpace: 'nowrap',
+      padding: '6px 12px', borderRadius: '8px',
+      background: s.bg, color: s.text, border: `1px solid ${s.border}`,
+      fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+      whiteSpace: 'nowrap', display: 'inline-block'
     }}>{level}</span>
   );
 };
 
-// ── MODAL SHELL ───────────────────────────────────────────────────────────────
-const Modal = ({ title, headerColor = '#0f172a', onClose, children }) => (
-  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-    <div style={{ background: '#fff', borderRadius: '8px', overflow: 'hidden', width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-      <div style={{ background: headerColor, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: '15px', color: '#fff', fontWeight: 600 }}>{title}</h2>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>✕</button>
+const Modal = ({ title, subtitle, onClose, children, hideClose }) => (
+  <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+    <div style={{ background: '#ffffff', borderRadius: '24px', overflow: 'hidden', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff' }}>
+        <div>
+          <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', color: '#0f172a', fontWeight: 900 }}>{title}</h2>
+          {subtitle && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>{subtitle}</p>}
+        </div>
+        {!hideClose && (
+          <button onClick={onClose} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: 900, cursor: 'pointer' }}>✕</button>
+        )}
       </div>
-      <div style={{ padding: '20px' }}>{children}</div>
+      <div style={{ padding: '24px', maxHeight: '70vh', overflowY: 'auto' }} className="modern-scroll">
+        {children}
+      </div>
     </div>
   </div>
 );
 
-// ── FORM FIELD ────────────────────────────────────────────────────────────────
 const Field = ({ label, children }) => (
-  <div style={{ marginBottom: '16px' }}>
-    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</label>
+  <div style={{ marginBottom: '20px' }}>
+    <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</label>
     {children}
   </div>
 );
 
 const inputStyle = {
-  width: '100%', padding: '8px 12px', borderRadius: '4px',
-  border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff',
-  boxSizing: 'border-box',
+  width: '100%', padding: '14px 16px', borderRadius: '12px',
+  border: '1px solid #cbd5e1', fontSize: '14px', fontWeight: 600, color: '#0f172a', background: '#ffffff',
+  boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.2s'
 };
 
-// ── CONFIRM DIALOG ────────────────────────────────────────────────────────────
 const Confirm = ({ message, onConfirm, onCancel }) => (
-  <Modal title="Confirm Action" headerColor="#dc2626" onClose={onCancel}>
-    <p style={{ fontSize: '13px', color: '#334155', marginBottom: '24px' }}>{message}</p>
-    <div style={{ display: 'flex', gap: '8px' }}>
-      <button onClick={onCancel} style={{ flex: 1, padding: '10px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-      <button onClick={onConfirm} style={{ flex: 1, padding: '10px', background: '#dc2626', border: 'none', borderRadius: '4px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Confirm Archive</button>
+  <Modal title="Confirm Deletion" subtitle="This action cannot be undone." hideClose={true}>
+    <p style={{ fontSize: '14px', color: '#334155', marginBottom: '32px', fontWeight: 500, lineHeight: 1.5 }}>{message}</p>
+    <div style={{ display: 'flex', gap: '12px' }}>
+      <button onClick={onCancel} style={{ flex: 1, padding: '14px', background: '#f1f5f9', border: 'none', borderRadius: '12px', fontWeight: 800, color: '#64748b', cursor: 'pointer' }}>Cancel</button>
+      <button onClick={onConfirm} style={{ flex: 1, padding: '14px', background: '#ef4444', border: 'none', borderRadius: '12px', fontWeight: 800, color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)' }}>Delete</button>
     </div>
   </Modal>
 );
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════════
 const ProductionRolesPage = () => {
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
 
-  // ── Modals & forms ────────────────────────────────────────────────────────
   const [showAddDept, setShowAddDept] = useState(false);
   const [showAddRole, setShowAddRole] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null); // { type, item }
-  const [preselectedDept, setPreselectedDept] = useState('');
-
-  const [deptForm, setDeptForm] = useState({ name: '', color: '#64748b', icon: '🏭', description: '' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  
+  const [deptForm, setDeptForm] = useState({ name: '', color: '#6366f1', icon: '🏭', description: '' });
   const [roleForm, setRoleForm] = useState({ role_name: '', department: '', description: '', skill_level: 'Mid-level' });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedDepts, setExpandedDepts] = useState({});
 
-  // ── Live subscriptions ────────────────────────────────────────────────────
   useEffect(() => {
     const unsubDepts = rolesService.subscribeDepartments(data => {
       setDepartments(data.filter(d => d.active !== false));
@@ -94,7 +90,6 @@ const ProductionRolesPage = () => {
     return () => { unsubDepts(); unsubRoles(); };
   }, []);
 
-  // ── Auto-seed on first load ───────────────────────────────────────────────
   useEffect(() => {
     if (!loading && !seeded) {
       setSeeded(true);
@@ -102,16 +97,6 @@ const ProductionRolesPage = () => {
     }
   }, [loading, seeded]);
 
-  // ── Expand all by default after load ─────────────────────────────────────
-  useEffect(() => {
-    if (departments.length > 0) {
-      const all = {};
-      departments.forEach(d => { all[d.id] = true; });
-      setExpandedDepts(prev => ({ ...all, ...prev }));
-    }
-  }, [departments.length]);
-
-  // ── Computed ──────────────────────────────────────────────────────────────
   const rolesByDept = useMemo(() => {
     const map = {};
     departments.forEach(d => { map[d.name] = []; });
@@ -133,12 +118,11 @@ const ProductionRolesPage = () => {
 
   const totalRoles = roles.length;
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleAddDept = async (e) => {
     e.preventDefault();
     await rolesService.addDepartment(deptForm);
     setShowAddDept(false);
-    setDeptForm({ name: '', color: '#64748b', icon: '🏭', description: '' });
+    setDeptForm({ name: '', color: '#6366f1', icon: '🏭', description: '' });
   };
 
   const handleEditDept = async (e) => {
@@ -151,7 +135,6 @@ const ProductionRolesPage = () => {
     e.preventDefault();
     await rolesService.addRole(roleForm);
     setShowAddRole(false);
-    setPreselectedDept('');
     setRoleForm({ role_name: '', department: '', description: '', skill_level: 'Mid-level' });
   };
 
@@ -169,7 +152,6 @@ const ProductionRolesPage = () => {
   };
 
   const openAddRole = (deptName = '') => {
-    setPreselectedDept(deptName);
     setRoleForm({ role_name: '', department: deptName, description: '', skill_level: 'Mid-level' });
     setShowAddRole(true);
   };
@@ -180,178 +162,160 @@ const ProductionRolesPage = () => {
   };
 
   const openEditDept = (dept) => {
-    setDeptForm({ name: dept.name, color: dept.color || '#64748b', icon: dept.icon || '🏭', description: dept.description || '' });
+    setDeptForm({ name: dept.name, color: dept.color || '#6366f1', icon: dept.icon || '🏭', description: dept.description || '' });
     setEditingDept(dept);
   };
 
-  const toggleDept = (id) => setExpandedDepts(prev => ({ ...prev, [id]: !prev[id] }));
-
-  // ── Color presets ─────────────────────────────────────────────────────────
-  const colorPresets = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f97316', '#06b6d4', '#64748b'];
+  const colorPresets = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'];
   const iconPresets  = ['🏭', '🔩', '⚡', '📋', '💻', '✅', '📦', '🔧', '⚙️', '🛠️'];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER
-  // ═══════════════════════════════════════════════════════════════════════════
-  return (
-    <div style={{ padding: '24px', background: '#f1f5f9', minHeight: '100vh', boxSizing: 'border-box' }}>
+  const S = {
+    page: { padding: '40px', height: '100vh', boxSizing: 'border-box', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexShrink: 0 },
+    title: { fontSize: '28px', fontWeight: 900, color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.02em' },
+    subtitle: { fontSize: '15px', color: '#64748b', margin: 0, fontWeight: 500 },
+    btnPrimary: { padding: '14px 24px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: 'white', borderRadius: '16px', fontWeight: 800, fontSize: '14px', letterSpacing: '0.05em', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '8px' },
+    btnSecondary: { padding: '14px 24px', backgroundColor: '#ffffff', color: '#4f46e5', border: '2px solid #e0e7ff', borderRadius: '16px', fontWeight: 800, fontSize: '14px', letterSpacing: '0.05em', cursor: 'pointer', transition: 'all 0.2s' },
+    workspace: { flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: '40px' },
+    topBar: { display: 'flex', gap: '24px', marginBottom: '32px', alignItems: 'stretch' },
+    statBox: { backgroundColor: '#ffffff', padding: '20px 24px', borderRadius: '20px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '120px', boxShadow: '0 4px 10px rgba(0,0,0,0.01)' },
+    searchInputWrapper: { flex: 1, backgroundColor: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.01)' },
+    deptCard: { backgroundColor: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', overflow: 'hidden' },
+    deptHeader: { padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' },
+    roleRow: { display: 'flex', alignItems: 'center', padding: '20px 32px', borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' },
+    actionBtn: { width: '36px', height: '36px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  };
 
-      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+  return (
+    <div style={S.page}>
+      
+      {/* HEADER */}
+      <div style={S.header}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            PRODUCTION ROLES MANAGEMENT
-          </h1>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            Manage manufacturing departments and operational job roles.
-          </p>
+          <h1 style={S.title}>Production Roles</h1>
+          <p style={S.subtitle}>Manage manufacturing departments and operational job roles.</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => { setDeptForm({ name: '', color: '#64748b', icon: '🏭', description: '' }); setShowAddDept(true); }}
-            style={{ padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 600, fontSize: '13px', color: '#475569', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button style={S.btnSecondary} onClick={() => { setDeptForm({ name: '', color: '#6366f1', icon: '🏭', description: '' }); setShowAddDept(true); }}>
             + Add Department
           </button>
-          <button onClick={() => openAddRole()}
-            style={{ padding: '8px 16px', background: '#0f172a', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '13px', color: '#fff', cursor: 'pointer' }}>
-            + Add Role
+          <button style={S.btnPrimary} onClick={() => openAddRole()}>
+            <span style={{ fontSize: '18px', lineHeight: 1 }}>+</span> Add Role
           </button>
         </div>
       </div>
 
-      {/* ── STATS ROW ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-        {[
-          { label: 'Departments', value: departments.length, color: '#0f172a' },
-          { label: 'Total Roles', value: totalRoles, color: '#3b82f6' },
-          { label: 'Active Roles', value: totalRoles, color: '#10b981' },
-        ].map(s => (
-          <div key={s.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '16px', minWidth: 140 }}>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+      <div style={S.workspace} className="modern-scroll">
+        
+        {/* TOP BAR: STATS + SEARCH */}
+        <div style={S.topBar}>
+          <div style={S.searchInputWrapper}>
+            <span style={{ fontSize: '20px', color: '#94a3b8' }}>🔍</span>
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by role or department name..."
+              style={{ border: 'none', outline: 'none', fontSize: '16px', fontWeight: 600, color: '#0f172a', width: '100%', backgroundColor: 'transparent' }}
+            />
+            {searchQuery && <button onClick={() => setSearchQuery('')} style={{ border: 'none', background: '#f1f5f9', borderRadius: '50%', width: '24px', height: '24px', color: '#64748b', cursor: 'pointer', fontSize: '12px', fontWeight: 800 }}>✕</button>}
           </div>
-        ))}
-      </div>
 
-      {/* ── SEARCH ─────────────────────────────────────────────────────────── */}
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px 16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ fontSize: '14px', color: '#94a3b8' }}>🔍</span>
-        <input
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search departments or roles…"
-          style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13px', color: '#0f172a', background: 'transparent' }}
-        />
-        {searchQuery && <button onClick={() => setSearchQuery('')} style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}>✕</button>}
-      </div>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={S.statBox}>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{departments.length}</div>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departments</div>
+            </div>
+            <div style={S.statBox}>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: '#10b981', lineHeight: 1 }}>{totalRoles}</div>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Roles</div>
+            </div>
+          </div>
+        </div>
 
-      {/* ── DEPARTMENT CARDS ───────────────────────────────────────────────── */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontSize: '13px' }}>Loading departments…</div>
-      ) : filteredDepts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontSize: '13px' }}>No departments found.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filteredDepts.map(dept => {
-            const deptRoles = (rolesByDept[dept.name] || []).filter(r =>
-              !searchQuery.trim() ||
-              r.role_name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            const isExpanded = expandedDepts[dept.id] !== false;
-            const deptColor = dept.color || '#64748b';
+        {/* DEPARTMENTS GRID */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontSize: '15px', fontWeight: 600 }}>Loading production roles...</div>
+        ) : filteredDepts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px', backgroundColor: '#ffffff', borderRadius: '24px', border: '1px dashed #cbd5e1' }}>
+            <span style={{ fontSize: '48px', opacity: 0.5, display: 'block', marginBottom: '16px' }}>🔍</span>
+            <h4 style={{ fontSize: '18px', fontWeight: 800, color: '#475569', margin: '0 0 8px 0' }}>No Roles Found</h4>
+            <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>Try adjusting your search criteria or add a new department.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            {filteredDepts.map(dept => {
+              const deptRoles = (rolesByDept[dept.name] || []).filter(r =>
+                !searchQuery.trim() ||
+                r.role_name.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              const deptColor = dept.color || '#6366f1';
 
-            return (
-              <div key={dept.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                {/* Department Header */}
-                <div
-                  onClick={() => toggleDept(dept.id)}
-                  style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', cursor: 'pointer', borderLeft: `4px solid ${deptColor}`, gap: '12px', userSelect: 'none' }}>
-                  <span style={{ fontSize: '18px' }}>{dept.icon || '🏭'}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{dept.name}</div>
-                    {dept.description && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{dept.description}</div>}
+              return (
+                <div key={dept.id} style={S.deptCard}>
+                  {/* Dept Header */}
+                  <div style={{...S.deptHeader, borderTop: `6px solid ${deptColor}`}}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: `${deptColor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                        {dept.icon || '🏭'}
+                      </div>
+                      <div>
+                        <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: 900, color: '#0f172a' }}>{dept.name}</h2>
+                        <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                          {dept.description || 'No description provided.'} 
+                          <span style={{ margin: '0 8px', color: '#cbd5e1' }}>|</span> 
+                          <span style={{ fontWeight: 800, color: deptColor }}>{deptRoles.length} ROLES</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => openAddRole(dept.name)} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: '#f1f5f9', border: 'none', color: '#475569', fontSize: '13px', fontWeight: 800, cursor: 'pointer', transition: 'background 0.2s' }}>
+                        + Add Role
+                      </button>
+                      <button onClick={() => openEditDept(dept)} style={S.actionBtn} title="Edit Department">✎</button>
+                      <button onClick={() => setConfirmDelete({ type: 'dept', item: dept })} style={{...S.actionBtn, color: '#ef4444', borderColor: '#fee2e2', backgroundColor: '#fef2f2'}} title="Delete Department">🗑</button>
+                    </div>
                   </div>
-                  <span style={{
-                    background: deptColor + '20', color: deptColor,
-                    padding: '3px 10px', borderRadius: '12px',
-                    fontSize: '11px', fontWeight: 700,
-                  }}>{deptRoles.length} {deptRoles.length === 1 ? 'Role' : 'Roles'}</span>
-                  {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => openAddRole(dept.name)}
-                      style={{ padding: '4px 10px', fontSize: '11px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
-                      + Role
-                    </button>
-                    <button onClick={() => openEditDept(dept)}
-                      style={{ padding: '4px 10px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
-                      Edit
-                    </button>
-                    <button onClick={() => setConfirmDelete({ type: 'dept', item: dept })}
-                      style={{ padding: '4px 10px', fontSize: '11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#dc2626' }}>
-                      Archive
-                    </button>
-                  </div>
-                  <span style={{ color: '#94a3b8', fontSize: '12px', marginLeft: '4px' }}>{isExpanded ? '▲' : '▼'}</span>
-                </div>
 
-                {/* Role Rows */}
-                {isExpanded && (
-                  <div style={{ borderTop: '1px solid #f1f5f9' }}>
+                  {/* Roles List */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {deptRoles.length === 0 ? (
-                      <div style={{ padding: '20px 24px', color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>
-                        No roles defined. <button onClick={() => openAddRole(dept.name)} style={{ border: 'none', background: 'none', color: deptColor, fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '12px' }}>Add one →</button>
+                      <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', fontWeight: 500, backgroundColor: '#f8fafc' }}>
+                        No roles defined in this department. 
+                        <span onClick={() => openAddRole(dept.name)} style={{ color: deptColor, fontWeight: 700, cursor: 'pointer', marginLeft: '6px' }}>Add the first role →</span>
                       </div>
                     ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ background: '#f8fafc' }}>
-                            <th style={{ padding: '8px 24px', fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', fontWeight: 700 }}>Role Name</th>
-                            <th style={{ padding: '8px 12px', fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', fontWeight: 700 }}>Skill Level</th>
-                            <th style={{ padding: '8px 12px', fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', fontWeight: 700 }}>Description</th>
-                            <th style={{ padding: '8px 16px', fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right', fontWeight: 700 }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {deptRoles.map((role, idx) => (
-                            <tr key={role.id} style={{ borderTop: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
-                              <td style={{ padding: '10px 24px' }}>
-                                <div style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a' }}>{role.role_name}</div>
-                              </td>
-                              <td style={{ padding: '10px 12px' }}>
-                                <SkillBadge level={role.skill_level} />
-                              </td>
-                              <td style={{ padding: '10px 12px', fontSize: '12px', color: '#64748b', maxWidth: '280px' }}>
-                                {role.description || '—'}
-                              </td>
-                              <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                                  <button onClick={() => openEditRole(role)}
-                                    style={{ padding: '3px 10px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>
-                                    Edit
-                                  </button>
-                                  <button onClick={() => setConfirmDelete({ type: 'role', item: role })}
-                                    style={{ padding: '3px 10px', fontSize: '11px', background: '#fff', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#dc2626' }}>
-                                    Archive
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      deptRoles.map((role) => (
+                        <div key={role.id} style={S.roleRow} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>{role.role_name}</div>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>{role.description || '—'}</div>
+                          </div>
+                          
+                          <div style={{ width: '150px', display: 'flex', justifyContent: 'center' }}>
+                            <SkillBadge level={role.skill_level} />
+                          </div>
+
+                          <div style={{ width: '120px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => openEditRole(role)} style={{...S.actionBtn, width: '32px', height: '32px'}} title="Edit Role"><span style={{fontSize: '13px'}}>✎</span></button>
+                            <button onClick={() => setConfirmDelete({ type: 'role', item: role })} style={{...S.actionBtn, width: '32px', height: '32px', color: '#ef4444', borderColor: '#fee2e2', backgroundColor: '#fef2f2'}} title="Delete Role"><span style={{fontSize: '13px'}}>🗑</span></button>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      {/* ══ ADD/EDIT DEPARTMENT MODAL ══════════════════════════════════════════ */}
+      </div>
+
+      {/* ADD/EDIT DEPT MODAL */}
       {(showAddDept || editingDept) && (
         <Modal
-          title={editingDept ? `Edit Department: ${editingDept.name}` : 'New Department'}
-          headerColor="#0f172a"
+          title={editingDept ? `Edit Department` : 'New Department'}
+          subtitle={editingDept ? `Modify the ${editingDept.name} department settings.` : 'Create a new functional department.'}
           onClose={() => { setShowAddDept(false); setEditingDept(null); }}
         >
           <form onSubmit={editingDept ? handleEditDept : handleAddDept}>
@@ -363,43 +327,40 @@ const ProductionRolesPage = () => {
               <input value={deptForm.description} onChange={e => setDeptForm({ ...deptForm, description: e.target.value })}
                 placeholder="Short description of responsibilities…" style={inputStyle} />
             </Field>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <Field label="Department Icon">
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+              <Field label="Icon">
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {iconPresets.map(ic => (
                     <button key={ic} type="button" onClick={() => setDeptForm({ ...deptForm, icon: ic })}
-                      style={{ width: 36, height: 36, borderRadius: '6px', border: `2px solid ${deptForm.icon === ic ? '#0f172a' : '#e2e8f0'}`, fontSize: '18px', cursor: 'pointer', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ width: '42px', height: '42px', borderRadius: '12px', border: `2px solid ${deptForm.icon === ic ? '#6366f1' : '#e2e8f0'}`, fontSize: '20px', cursor: 'pointer', background: deptForm.icon === ic ? '#eef2ff' : '#f8fafc', transition: 'all 0.2s' }}>
                       {ic}
                     </button>
                   ))}
                 </div>
               </Field>
-              <Field label="Accent Color">
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <Field label="Theme Color">
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {colorPresets.map(c => (
                     <button key={c} type="button" onClick={() => setDeptForm({ ...deptForm, color: c })}
-                      style={{ width: 28, height: 28, borderRadius: '50%', border: `3px solid ${deptForm.color === c ? '#0f172a' : 'transparent'}`, background: c, cursor: 'pointer' }} />
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: `3px solid ${deptForm.color === c ? '#0f172a' : 'transparent'}`, background: c, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
                   ))}
                 </div>
               </Field>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <button type="button" onClick={() => { setShowAddDept(false); setEditingDept(null); }}
-                style={{ flex: 1, padding: '10px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-              <button type="submit"
-                style={{ flex: 1, padding: '10px', background: '#0f172a', border: 'none', borderRadius: '4px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
-                {editingDept ? 'Save Changes' : 'Create Department'}
-              </button>
-            </div>
+
+            <button type="submit" style={{ ...S.btnPrimary, width: '100%', justifyContent: 'center', padding: '16px' }}>
+              {editingDept ? 'Save Changes' : 'Create Department'}
+            </button>
           </form>
         </Modal>
       )}
 
-      {/* ══ ADD/EDIT ROLE MODAL ════════════════════════════════════════════════ */}
+      {/* ADD/EDIT ROLE MODAL */}
       {(showAddRole || editingRole) && (
         <Modal
-          title={editingRole ? `Edit Role: ${editingRole.role_name}` : 'Add New Role'}
-          headerColor="#1e3a5f"
+          title={editingRole ? `Edit Role` : 'Add New Role'}
+          subtitle={editingRole ? `Update details for ${editingRole.role_name}.` : 'Define a new operational role within a department.'}
           onClose={() => { setShowAddRole(false); setEditingRole(null); }}
         >
           <form onSubmit={editingRole ? handleEditRole : handleAddRole}>
@@ -414,15 +375,15 @@ const ProductionRolesPage = () => {
               </select>
             </Field>
             <Field label="Skill Level">
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {SKILL_LEVELS.map(level => (
                   <button key={level} type="button" onClick={() => setRoleForm({ ...roleForm, skill_level: level })}
                     style={{
-                      padding: '5px 12px', borderRadius: '6px', border: '1px solid',
-                      borderColor: roleForm.skill_level === level ? '#0f172a' : '#e2e8f0',
-                      background: roleForm.skill_level === level ? '#0f172a' : '#fff',
-                      color: roleForm.skill_level === level ? '#fff' : '#475569',
-                      fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                      padding: '8px 16px', borderRadius: '10px', border: '1px solid',
+                      borderColor: roleForm.skill_level === level ? '#6366f1' : '#e2e8f0',
+                      background: roleForm.skill_level === level ? '#eef2ff' : '#ffffff',
+                      color: roleForm.skill_level === level ? '#4338ca' : '#475569',
+                      fontSize: '13px', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s'
                     }}>
                     {level}
                   </button>
@@ -433,25 +394,21 @@ const ProductionRolesPage = () => {
               <textarea rows="3" value={roleForm.description} onChange={e => setRoleForm({ ...roleForm, description: e.target.value })}
                 placeholder="Briefly describe the role's responsibilities…" style={{ ...inputStyle, resize: 'vertical' }} />
             </Field>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <button type="button" onClick={() => { setShowAddRole(false); setEditingRole(null); }}
-                style={{ flex: 1, padding: '10px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-              <button type="submit"
-                style={{ flex: 1, padding: '10px', background: '#0f172a', border: 'none', borderRadius: '4px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>
-                {editingRole ? 'Save Changes' : 'Add Role'}
-              </button>
-            </div>
+
+            <button type="submit" style={{ ...S.btnPrimary, width: '100%', justifyContent: 'center', padding: '16px', marginTop: '12px' }}>
+              {editingRole ? 'Save Changes' : 'Create Role'}
+            </button>
           </form>
         </Modal>
       )}
 
-      {/* ══ CONFIRM ARCHIVE ════════════════════════════════════════════════════ */}
+      {/* CONFIRM ARCHIVE MODAL */}
       {confirmDelete && (
         <Confirm
           message={
             confirmDelete.type === 'dept'
-              ? `Archive department "${confirmDelete.item.name}"? All roles within it will remain in the database but the department will be hidden.`
-              : `Archive role "${confirmDelete.item.role_name}"? This will hide it from the system but preserve audit history.`
+              ? `Are you sure you want to delete the department "${confirmDelete.item.name}"? This will permanently remove the department. Roles may need to be reassigned.`
+              : `Are you sure you want to delete the role "${confirmDelete.item.role_name}"?`
           }
           onConfirm={handleDeleteConfirm}
           onCancel={() => setConfirmDelete(null)}
