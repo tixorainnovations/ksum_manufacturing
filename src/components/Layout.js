@@ -27,6 +27,9 @@ const Layout = ({ children }) => {
           <NavLink to={`/dashboard/${machineId}/components`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span>🔧</span> Components
           </NavLink>
+          <NavLink to={`/dashboard/${machineId}/procurement`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span>🛒</span> Procurement
+          </NavLink>
           <NavLink to={`/dashboard/${machineId}/inventory`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <span>📦</span> Inventory
           </NavLink>

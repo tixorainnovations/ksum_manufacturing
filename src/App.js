@@ -7,6 +7,7 @@ import ComponentsPage from './pages/ComponentsPage';
 import ProcessFlowPage from './pages/ProcessFlowPage';
 import QualityCheckPage from './pages/QualityCheckPage';
 import InventoryPage from './pages/InventoryPage';
+import ProcurementPage from './pages/ProcurementPage';
 import ProductionRolesPage from './pages/ProductionRolesPage';
 import Layout from './components/Layout';
 
@@ -19,6 +20,7 @@ function App() {
           
           <Route path="/dashboard/:machineId" element={<Layout><MachineDashboard /></Layout>} />
           <Route path="/dashboard/:machineId/components" element={<Layout><ComponentsPage /></Layout>} />
+          <Route path="/dashboard/:machineId/procurement" element={<Layout><ProcurementPage /></Layout>} />
           <Route path="/dashboard/:machineId/inventory" element={<Layout><InventoryPage /></Layout>} />
           <Route path="/dashboard/:machineId/process" element={<Layout><ProcessFlowPage /></Layout>} />
           <Route path="/dashboard/:machineId/quality" element={<Layout><QualityCheckPage /></Layout>} />

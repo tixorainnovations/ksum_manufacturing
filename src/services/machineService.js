@@ -55,7 +55,7 @@ export const machineService = {
     },
 
     // ✅ UPDATED CREATE (CUSTOM ID)
-    create: async (name) => {
+    create: async (name, description = "", imageUrl = "") => {
         try {
             const customId = name
                 .toLowerCase()
@@ -68,12 +68,16 @@ export const machineService = {
 
             await setDoc(docRef, {
                 name,
+                description,
+                imageUrl,
                 createdAt: serverTimestamp()
             });
 
             return {
                 id: customId,
-                name
+                name,
+                description,
+                imageUrl
             };
 
         } catch (error) {
@@ -82,16 +86,16 @@ export const machineService = {
         }
     },
 
-    update: async (id, name) => {
+    update: async (id, data) => {
         try {
             const docRef = doc(db, COLLECTION_NAME, id);
 
             await updateDoc(docRef, {
-                name,
+                ...data,
                 updatedAt: serverTimestamp()
             });
 
-            return { id, name };
+            return { id, ...data };
 
         } catch (error) {
             console.error("Error updating machine:", error);

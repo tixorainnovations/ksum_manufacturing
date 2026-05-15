@@ -88,10 +88,10 @@ const InventoryPage = () => {
     const unsubComps = onSnapshot(query(collection(db, "components"), where("machineId", "==", machineId)), (snap) => {
       setComponents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubTools = onSnapshot(collection(db, "tools"), (snap) => {
+    const unsubTools = onSnapshot(query(collection(db, "tools"), where("machineId", "==", machineId)), (snap) => {
       setTools(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubFasteners = onSnapshot(collection(db, "fasteners"), (snap) => {
+    const unsubFasteners = onSnapshot(query(collection(db, "fasteners"), where("machineId", "==", machineId)), (snap) => {
       setFasteners(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 

@@ -70,12 +70,12 @@ const ComponentsPage = () => {
       setLoading(false);
     });
 
-    const unsubscribeTools = onSnapshot(collection(db, "tools"), (snapshot) => {
+    const unsubscribeTools = onSnapshot(query(collection(db, "tools"), where("machineId", "==", machineId)), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setTools(data.sort((a, b) => (Number(a.index) || 999) - (Number(b.index) || 999)));
     });
 
-    const unsubscribeFasteners = onSnapshot(collection(db, "fasteners"), (snapshot) => {
+    const unsubscribeFasteners = onSnapshot(query(collection(db, "fasteners"), where("machineId", "==", machineId)), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setFasteners(data.sort((a, b) => (Number(a.index) || 999) - (Number(b.index) || 999)));
     });
@@ -384,9 +384,9 @@ const ComponentsPage = () => {
     try {
       const uploadData = validData.map(({ tempId, isValid, errors, ...rest }) => rest);
       if (activeTab === 'tools') {
-         await Promise.all(uploadData.map(data => toolService.create({ ...data, createdAt: new Date() })));
+         await Promise.all(uploadData.map(data => toolService.create({ ...data, machineId, createdAt: new Date() })));
       } else if (activeTab === 'fasteners') {
-         await fastenerService.createBulk(uploadData);
+         await fastenerService.createBulk(uploadData.map(d => ({ ...d, machineId })));
       } else {
          await componentService.bulkCreate(machineId, activeTab, uploadData);
       }
@@ -737,10 +737,10 @@ const ComponentsPage = () => {
                 }
                 try {
                   if (activeTab === 'tools') {
-                    await toolService.create({ ...data, createdAt: new Date() });
+                    await toolService.create({ ...data, machineId, createdAt: new Date() });
                     setToolForm({ index: 1, name: '', category: '', description: '', qty: 1, location: '' });
                   } else if (activeTab === 'fasteners') {
-                    await fastenerService.create({ ...data, createdAt: new Date() });
+                    await fastenerService.create({ ...data, machineId, createdAt: new Date() });
                     setFastenerForm({ index: 1, category: 'screw', name: '', spec: '', material: '', qty: 1, location: '' });
                   } else {
                     await componentService.create(machineId, activeTab, data);

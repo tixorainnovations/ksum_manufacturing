@@ -4,6 +4,7 @@ import { machineService } from '../services/machineService';
 import { useMachine } from '../context/MachineContext';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { mediaService } from '../services/mediaService';
 
 const MachineSelection = () => {
   const [machines, setMachines] = useState([]);
@@ -11,8 +12,15 @@ const MachineSelection = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newMachineName, setNewMachineName] = useState('');
+  const [newMachineDescription, setNewMachineDescription] = useState('');
+  const [newMachineFile, setNewMachineFile] = useState(null);
   const [editingMachine, setEditingMachine] = useState(null);
   const [editMachineName, setEditMachineName] = useState('');
+  const [editMachineDescription, setEditMachineDescription] = useState('');
+  const [editMachineImageUrl, setEditMachineImageUrl] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const { selectMachine } = useMachine();
   const navigate = useNavigate();
@@ -42,12 +50,40 @@ const MachineSelection = () => {
     if (!newMachineName.trim()) return;
 
     try {
-      await machineService.create(newMachineName.trim());
+      setIsUploading(true);
+      let imageUrl = '';
+
+      // We need a temporary ID for storage path if we want to upload before doc creation
+      // Or we can let machineService.create generate the ID first.
+      // Since machineService.create uses the name to generate the ID, we can predict it.
+      const predictedId = newMachineName.trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
+      if (newMachineFile) {
+        const mediaObj = await mediaService.uploadFile(
+          newMachineFile, 
+          'machines', 
+          predictedId, 
+          'profile',
+          (progress) => setUploadProgress(progress)
+        );
+        imageUrl = mediaObj.url;
+      }
+
+      await machineService.create(newMachineName.trim(), newMachineDescription.trim(), imageUrl);
+      
       setNewMachineName('');
+      setNewMachineDescription('');
+      setNewMachineFile(null);
       setShowAddModal(false);
     } catch (error) {
       console.error("❌ Create error:", error);
       alert("Failed to create machine: " + error.message);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -56,12 +92,37 @@ const MachineSelection = () => {
     if (!editMachineName.trim() || !editingMachine) return;
 
     try {
-      await machineService.update(editingMachine.id, editMachineName.trim());
+      setIsUploading(true);
+      let imageUrl = editMachineImageUrl;
+
+      if (selectedFile) {
+        const mediaObj = await mediaService.uploadFile(
+          selectedFile, 
+          'machines', 
+          editingMachine.id, 
+          'profile',
+          (progress) => setUploadProgress(progress)
+        );
+        imageUrl = mediaObj.url;
+      }
+
+      await machineService.update(editingMachine.id, {
+        name: editMachineName.trim(),
+        description: editMachineDescription.trim(),
+        imageUrl: imageUrl
+      });
+
       setShowEditModal(false);
       setEditingMachine(null);
+      setSelectedFile(null);
+      setEditMachineImageUrl('');
+      setEditMachineDescription('');
     } catch (error) {
       console.error("❌ Update error:", error);
       alert("Failed to update machine");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -81,6 +142,8 @@ const MachineSelection = () => {
     e.stopPropagation();
     setEditingMachine(machine);
     setEditMachineName(machine.name);
+    setEditMachineDescription(machine.description || '');
+    setEditMachineImageUrl(machine.imageUrl || '');
     setShowEditModal(true);
   };
 
@@ -138,16 +201,19 @@ const MachineSelection = () => {
               {/* Card Visual */}
               <div style={{
                 height: 160,
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                background: machine.imageUrl ? `url(${machine.imageUrl})` : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 borderRadius: '8px',
                 marginBottom: '1.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '3.5rem',
-                border: '1px solid #f1f5f9'
+                border: '1px solid #f1f5f9',
+                overflow: 'hidden'
               }}>
-                ⚙️
+                {!machine.imageUrl && "⚙️"}
               </div>
 
               {/* Card Content */}
@@ -155,7 +221,18 @@ const MachineSelection = () => {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
                   {machine.name}
                 </h3>
-                <div className="text-sm text-light">Click to enter dashboard</div>
+                {machine.description && (
+                  <p className="text-sm text-light" style={{ 
+                    marginBottom: '0.5rem',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
+                    {machine.description}
+                  </p>
+                )}
+                <div className="text-sm text-light" style={{ fontWeight: 500, color: 'var(--primary)' }}>Click to enter dashboard</div>
               </div>
             </div>
           ))}
@@ -164,11 +241,11 @@ const MachineSelection = () => {
 
       {/* Add Machine Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => { if(!isUploading) setShowAddModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ marginBottom: '1.5rem' }}>Create New Machine</h2>
             <form onSubmit={handleCreateMachine}>
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label">Machine Name</label>
                 <input 
                   type="text" 
@@ -177,19 +254,77 @@ const MachineSelection = () => {
                   value={newMachineName}
                   onChange={(e) => setNewMachineName(e.target.value)}
                   autoFocus
+                  disabled={isUploading}
                 />
               </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Description</label>
+                <textarea 
+                  className="form-input" 
+                  rows="3"
+                  placeholder="Describe the machine's capabilities..."
+                  value={newMachineDescription}
+                  onChange={(e) => setNewMachineDescription(e.target.value)}
+                  style={{ resize: 'vertical' }}
+                  disabled={isUploading}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Machine Image</label>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1rem',
+                  padding: '1rem',
+                  border: '1px dashed var(--border)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-light)'
+                }}>
+                  {newMachineFile && (
+                    <img 
+                      src={URL.createObjectURL(newMachineFile)} 
+                      alt="Preview" 
+                      style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '4px' }}
+                    />
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => setNewMachineFile(e.target.files[0])}
+                    style={{ fontSize: '0.875rem' }}
+                    disabled={isUploading}
+                  />
+                </div>
+              </div>
+
+              {isUploading && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div className="progress-bar-container" style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div className="progress-bar" style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--primary)', transition: 'width 0.3s' }}></div>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: '0.5rem' }}>Uploading... {Math.round(uploadProgress)}%</p>
+                </div>
+              )}
+
               <div className="flex gap-2 mt-6">
-                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }} 
+                  onClick={() => setShowAddModal(false)}
+                  disabled={isUploading}
+                >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn btn-primary" 
                   style={{ flex: 1 }}
-                  disabled={!newMachineName.trim()}
+                  disabled={!newMachineName.trim() || isUploading}
                 >
-                  Create
+                  {isUploading ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>
@@ -199,11 +334,11 @@ const MachineSelection = () => {
 
       {/* Edit Machine Modal */}
       {showEditModal && (
-        <div className="modal-overlay" onClick={() => { setShowEditModal(false); setEditingMachine(null); }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => { if(!isUploading) { setShowEditModal(false); setEditingMachine(null); } }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ marginBottom: '1.5rem' }}>Edit Machine</h2>
             <form onSubmit={handleUpdateMachine}>
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label">Machine Name</label>
                 <input 
                   type="text" 
@@ -211,19 +346,77 @@ const MachineSelection = () => {
                   value={editMachineName}
                   onChange={(e) => setEditMachineName(e.target.value)}
                   autoFocus
+                  disabled={isUploading}
                 />
               </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Description</label>
+                <textarea 
+                  className="form-input" 
+                  rows="3"
+                  placeholder="Describe the machine's capabilities..."
+                  value={editMachineDescription}
+                  onChange={(e) => setEditMachineDescription(e.target.value)}
+                  style={{ resize: 'vertical' }}
+                  disabled={isUploading}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Machine Image</label>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '1rem',
+                  padding: '1rem',
+                  border: '1px dashed var(--border)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-light)'
+                }}>
+                  {(selectedFile || editMachineImageUrl) && (
+                    <img 
+                      src={selectedFile ? URL.createObjectURL(selectedFile) : editMachineImageUrl} 
+                      alt="Preview" 
+                      style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '4px' }}
+                    />
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                    style={{ fontSize: '0.875rem' }}
+                    disabled={isUploading}
+                  />
+                </div>
+              </div>
+
+              {isUploading && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div className="progress-bar-container" style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div className="progress-bar" style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--primary)', transition: 'width 0.3s' }}></div>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: '0.5rem' }}>Uploading... {Math.round(uploadProgress)}%</p>
+                </div>
+              )}
+
               <div className="flex gap-2 mt-6">
-                <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setShowEditModal(false); setEditingMachine(null); }}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }} 
+                  onClick={() => { setShowEditModal(false); setEditingMachine(null); }}
+                  disabled={isUploading}
+                >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn btn-primary" 
                   style={{ flex: 1 }}
-                  disabled={!editMachineName.trim()}
+                  disabled={!editMachineName.trim() || isUploading}
                 >
-                  Save Changes
+                  {isUploading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
