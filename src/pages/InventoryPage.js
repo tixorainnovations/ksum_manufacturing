@@ -27,9 +27,7 @@ const InventoryPage = () => {
 
   // Form States
   const [incomingForm, setIncomingForm] = useState({
-    componentId: '',
-    type: 'procured',
-    quantity: 1,
+    selections: [], // Array of { id, quantity: 1 }
     source: '',
     details: ''
   });
@@ -113,30 +111,42 @@ const InventoryPage = () => {
 
   const handleAddIncoming = async (e) => {
     e.preventDefault();
-    if (!incomingForm.componentId) {
-      alert("Please select a valid item from the list.");
+    if (incomingForm.selections.length === 0) {
+      alert("Please select at least one item from the list.");
       return;
     }
-    const selected = masterList.find(c => c.id === incomingForm.componentId);
-    if (!selected) return;
 
     try {
-      await inventoryService.addIncomingBatch(machineId, {
-        ...incomingForm,
-        name: selected.name,
-        type: selected.displayType.toLowerCase()
+      const promises = incomingForm.selections.map(async (sel) => {
+        const selected = masterList.find(c => c.id === sel.id);
+        if (!selected) return;
+
+        await inventoryService.addIncomingBatch(machineId, {
+          componentId: sel.id,
+          name: selected.name,
+          type: selected.displayType.toLowerCase(),
+          quantity: sel.quantity,
+          source: incomingForm.source,
+          details: incomingForm.details
+        });
+
+        return selected.id;
       });
 
-      const newRecent = [selected.id, ...recentItems.filter(id => id !== selected.id)].slice(0, 5);
+      const addedIds = await Promise.all(promises);
+      const filteredAddedIds = addedIds.filter(Boolean);
+
+      const newRecent = [...new Set([...filteredAddedIds, ...recentItems])].slice(0, 5);
       setRecentItems(newRecent);
       localStorage.setItem('recentInventoryItems', JSON.stringify(newRecent));
 
       setShowAddModal(false);
-      setIncomingForm({ componentId: '', type: 'procured', quantity: 1, source: '', details: '' });
+      setIncomingForm({ selections: [], source: '', details: '' });
       setSearchQuery('');
       setItemFilter('All');
     } catch (error) {
       console.error(error);
+      alert("Failed to log materials. Please try again.");
     }
   };
 
@@ -777,103 +787,214 @@ const InventoryPage = () => {
       {/* MODALS */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ width: 500, borderRadius: '8px', overflow: 'hidden' }}>
-            <div style={{ background: '#0f172a', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontSize: '15px', color: '#fff', fontWeight: 600 }}>Log Incoming Material</h2>
-              <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+          <div className="modal-content" style={{ width: 900, maxWidth: '95vw', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ background: '#0f172a', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '18px', color: '#fff', fontWeight: 700 }}>Log Incoming Material</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>Select components from the library and specify intake quantities.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '14px', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}>✕</button>
             </div>
-            <form onSubmit={handleAddIncoming} style={{ padding: '20px' }}>
-              <div className="form-group" style={{ marginBottom: '16px', position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>Search Item</label>
-                
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-                  {['All', 'Procured', 'Manufactured', 'Fastener', 'Tool'].map(f => (
+            
+            <form onSubmit={handleAddIncoming} style={{ display: 'flex', height: '650px', background: '#fff' }}>
+              {/* LEFT COLUMN: SELECTION LIBRARY */}
+              <div style={{ flex: 1, borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', background: '#fff' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Search Library</label>
+                    <input 
+                      type="text" 
+                      placeholder="Search by name or category..." 
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
+                      onFocus={e => e.target.style.borderColor = '#0f172a'}
+                      onBlur={e => e.target.style.borderColor = '#cbd5e1'}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    {['All', 'Procured', 'Manufactured', 'Fastener', 'Tool'].map(f => (
+                      <button 
+                        type="button" 
+                        key={f}
+                        onClick={() => setItemFilter(f)}
+                        style={{ 
+                          padding: '6px 14px', 
+                          fontSize: '11px', 
+                          fontWeight: 700, 
+                          borderRadius: '20px', 
+                          background: itemFilter === f ? '#0f172a' : '#fff', 
+                          color: itemFilter === f ? '#fff' : '#64748b', 
+                          border: itemFilter === f ? 'none' : '1px solid #e2e8f0', 
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          boxShadow: itemFilter === f ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                  {Object.entries(filteredComboboxItems).map(([groupName, items]) => {
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={groupName} style={{ marginBottom: '20px' }}>
+                        <div style={{ padding: '0 8px 8px 8px', fontSize: '10px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{groupName}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {items.map(item => {
+                            const isSelected = incomingForm.selections.some(s => s.id === item.id);
+                            return (
+                              <div 
+                                key={item.id} 
+                                onClick={() => {
+                                  const exists = incomingForm.selections.some(s => s.id === item.id);
+                                  if (exists) {
+                                    setIncomingForm({ ...incomingForm, selections: incomingForm.selections.filter(s => s.id !== item.id) });
+                                  } else {
+                                    setIncomingForm({ ...incomingForm, selections: [...incomingForm.selections, { id: item.id, quantity: 1 }] });
+                                  }
+                                }}
+                                style={{ 
+                                  padding: '12px', 
+                                  cursor: 'pointer', 
+                                  borderRadius: '10px',
+                                  display: 'flex', 
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  background: isSelected ? '#fff' : 'transparent',
+                                  border: isSelected ? '1px solid #0f172a' : '1px solid transparent',
+                                  boxShadow: isSelected ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => !isSelected && (e.currentTarget.style.background = 'rgba(255,255,255,0.5)')}
+                                onMouseLeave={e => !isSelected && (e.currentTarget.style.background = 'transparent')}
+                              >
+                                <div style={{ 
+                                  width: '20px', 
+                                  height: '20px', 
+                                  borderRadius: '4px', 
+                                  border: isSelected ? 'none' : '2px solid #cbd5e1', 
+                                  background: isSelected ? '#0f172a' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#fff',
+                                  fontSize: '12px'
+                                }}>
+                                  {isSelected && '✓'}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? '#0f172a' : '#334155' }}>{item.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{item.displayType} • {item.source || 'Standard Part'}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: INTAKE DETAILS */}
+              <div style={{ width: '400px', display: 'flex', flexDirection: 'column', padding: '24px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Selected Items ({incomingForm.selections.length})</label>
+                  
+                  {incomingForm.selections.length === 0 ? (
+                    <div style={{ height: '200px', border: '2px dashed #e2e8f0', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', marginBottom: '12px' }}>📦</div>
+                      <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>No items selected yet.<br/>Click on components in the library to add them.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {incomingForm.selections.map(sel => {
+                        const item = masterList.find(i => i.id === sel.id);
+                        return (
+                          <div key={sel.id} style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                              <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>{item?.name}</div>
+                              <button 
+                                type="button" 
+                                onClick={() => setIncomingForm({ ...incomingForm, selections: incomingForm.selections.filter(s => s.id !== sel.id) })}
+                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '11px', padding: '2px' }}
+                              >✕ Remove</button>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>Quantity</label>
+                                <input 
+                                  type="number" 
+                                  min="1" 
+                                  value={sel.quantity} 
+                                  onChange={e => {
+                                    const newSelections = incomingForm.selections.map(s => s.id === sel.id ? { ...s, quantity: Number(e.target.value) } : s);
+                                    setIncomingForm({ ...incomingForm, selections: newSelections });
+                                  }}
+                                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600 }} 
+                                />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <label style={{ display: 'block', fontSize: '10px', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>Unit</label>
+                                <div style={{ padding: '8px 12px', background: '#fff', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', color: '#64748b' }}>pcs</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Supplier / Vendor</label>
+                    <input 
+                      placeholder="e.g. Acme Corp" 
+                      value={incomingForm.source} 
+                      onChange={e => setIncomingForm({ ...incomingForm, source: e.target.value })} 
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }} 
+                    />
+                  </div>
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Notes / GRN Ref</label>
+                    <textarea 
+                      rows="2" 
+                      placeholder="Add any internal notes..."
+                      value={incomingForm.details} 
+                      onChange={e => setIncomingForm({ ...incomingForm, details: e.target.value })} 
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', resize: 'none' }} 
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 700, color: '#475569', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
                     <button 
-                      type="button" 
-                      key={f}
-                      onClick={() => setItemFilter(f)}
+                      type="submit" 
+                      disabled={incomingForm.selections.length === 0}
                       style={{ 
-                        padding: '4px 10px', 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        borderRadius: '12px', 
-                        background: itemFilter === f ? '#0f172a' : '#f1f5f9', 
-                        color: itemFilter === f ? '#fff' : '#64748b', 
+                        flex: 2, 
+                        padding: '12px', 
+                        background: incomingForm.selections.length === 0 ? '#94a3b8' : '#0f172a', 
                         border: 'none', 
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
+                        borderRadius: '8px', 
+                        fontWeight: 700, 
+                        color: '#fff', 
+                        cursor: incomingForm.selections.length === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        boxShadow: incomingForm.selections.length === 0 ? 'none' : '0 10px 15px -3px rgba(15, 23, 42, 0.3)'
                       }}
                     >
-                      {f}
+                      Log {incomingForm.selections.length} Items
                     </button>
-                  ))}
-                </div>
-
-                <input 
-                  type="text" 
-                  placeholder="Type to search component..." 
-                  value={searchQuery}
-                  onChange={e => {
-                    setSearchQuery(e.target.value);
-                    setShowDropdown(true);
-                    if(incomingForm.componentId) setIncomingForm({ ...incomingForm, componentId: '' });
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: incomingForm.componentId ? '2px solid #10b981' : '1px solid #cbd5e1', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-                />
-
-                {showDropdown && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', maxHeight: '280px', overflowY: 'auto', zIndex: 50, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-                    {Object.entries(filteredComboboxItems).map(([groupName, items]) => {
-                      if (items.length === 0) return null;
-                      if (groupName === 'Recently Used' && searchQuery && !incomingForm.componentId) return null;
-                      
-                      return (
-                        <div key={groupName}>
-                          <div style={{ padding: '8px 12px', background: '#f8fafc', fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #e2e8f0', borderTop: groupName !== 'Recently Used' ? '1px solid #e2e8f0' : 'none' }}>{groupName}</div>
-                          {items.map(item => (
-                            <div 
-                              key={item.id} 
-                              onClick={() => {
-                                setIncomingForm({ ...incomingForm, componentId: item.id });
-                                setSearchQuery(item.name);
-                                setShowDropdown(false);
-                              }}
-                              style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <span style={{ fontWeight: 600, fontSize: '13px', color: '#0f172a' }}>{item.name}</span>
-                              <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', fontWeight: 500 }}>{item.displayType} • {item.source || 'Standard Part'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                    {Object.values(filteredComboboxItems).every(arr => arr.length === 0) && (
-                      <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px', fontWeight: 500 }}>No items found matching "{searchQuery}"</div>
-                    )}
                   </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Intake Quantity</label>
-                  <input type="number" required min="1" value={incomingForm.quantity} onChange={e => setIncomingForm({ ...incomingForm, quantity: e.target.value })} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Supplier / Vendor</label>
-                  <input placeholder="e.g. Acme Corp" value={incomingForm.source} onChange={e => setIncomingForm({ ...incomingForm, source: e.target.value })} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
-                </div>
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Notes / GRN Reference</label>
-                <textarea rows="2" value={incomingForm.details} onChange={e => setIncomingForm({ ...incomingForm, details: e.target.value })} style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '10px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '10px', background: '#0f172a', border: 'none', borderRadius: '4px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Log to Receiving Hub</button>
               </div>
             </form>
           </div>

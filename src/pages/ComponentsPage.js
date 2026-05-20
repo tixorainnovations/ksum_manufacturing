@@ -7,6 +7,7 @@ import { componentService } from '../services/componentService';
 import { toolService } from '../services/toolService';
 import { fastenerService } from '../services/fastenerService';
 import ComponentMediaPanel from '../components/ComponentMediaPanel';
+import SafeImage from '../components/common/SafeImage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -23,6 +24,7 @@ const ComponentsPage = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [showMediaPanel, setShowMediaPanel] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
   
   // Multi-step Upload State
   const [uploadStep, setUploadStep] = useState('select');
@@ -457,10 +459,24 @@ const ComponentsPage = () => {
 
   const MediaThumbnail = ({ item, tab }) => {
     const primaryImage = item.images?.find(i => i.isPrimary) || item.images?.[0];
-    if (primaryImage) {
-      return <img src={primaryImage.url} alt={item.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />;
-    }
     const icon = tab === 'tools' ? '🧰' : tab === 'fasteners' ? '🔩' : tab === 'manufactured' ? '⚙️' : '📦';
+    
+    if (primaryImage) {
+      return (
+        <div 
+          onClick={() => setFullscreenImage(primaryImage.url)}
+          style={{ width: '40px', height: '40px', borderRadius: '6px', overflow: 'hidden', cursor: 'zoom-in' }}
+        >
+          <SafeImage 
+            src={primaryImage.url} 
+            alt={item.name} 
+            fallbackIcon={icon}
+            fallbackText=""
+          />
+        </div>
+      );
+    }
+    
     return (
       <div style={{ width: '40px', height: '40px', background: '#f1f5f9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
         {icon}
@@ -862,6 +878,29 @@ const ComponentsPage = () => {
           }} 
         />
       )}
+      {fullscreenImage && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setFullscreenImage(null)}
+          style={{ zIndex: 2000, background: 'rgba(0,0,0,0.85)' }}
+        >
+          <div style={{ position: 'relative', width: '90%', height: '90%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button 
+              onClick={() => setFullscreenImage(null)}
+              style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', fontSize: '2rem', cursor: 'pointer' }}
+            >
+              &times;
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Fullscreen Preview" 
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} 
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
