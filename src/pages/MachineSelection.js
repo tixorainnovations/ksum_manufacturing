@@ -155,10 +155,10 @@ const MachineSelection = () => {
   return (
     <div className="selection-container">
       {/* Header Section */}
-      <header className="flex justify-between items-center" style={{ marginBottom: '3rem' }}>
+      <header className="flex justify-between items-center" style={{ marginBottom: '4rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text)' }}>
-            Select <span style={{ color: 'var(--primary)' }}>Machine</span>
+          <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--text)', marginBottom: '0.5rem', letterSpacing: '-0.03em' }}>
+            Select <span style={{ background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Machine</span>
           </h1>
           <p className="text-light" style={{ fontSize: '1.1rem' }}>
             Select a workstation to manage production and setup
@@ -200,17 +200,17 @@ const MachineSelection = () => {
 
               {/* Card Visual */}
               <div style={{
-                height: 160,
-                background: machine.imageUrl ? `url(${machine.imageUrl})` : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                height: 180,
+                background: machine.imageUrl ? `url(${machine.imageUrl})` : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 marginBottom: '1.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '3.5rem',
-                border: '1px solid #f1f5f9',
+                fontSize: '4rem',
+                border: '1px solid rgba(226, 232, 240, 0.5)',
                 overflow: 'hidden'
               }}>
                 {!machine.imageUrl && "⚙️"}

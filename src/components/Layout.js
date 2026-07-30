@@ -16,7 +16,7 @@ const Layout = ({ children }) => {
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div style={{ width: 32, height: 32, background: 'var(--primary)', borderRadius: 8 }}></div>
+          <div style={{ width: 32, height: 32, background: 'var(--primary-gradient)', borderRadius: 10, boxShadow: 'var(--shadow-glow)' }}></div>
           <span>Mini-MES</span>
         </div>
         
@@ -56,9 +56,9 @@ const Layout = ({ children }) => {
           <div className="header-title">
             {selectedMachine?.name || 'Machine Dashboard'}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-light">Admin Mode</div>
-            <div style={{ width: 32, height: 32, background: '#e2e8f0', borderRadius: '50%' }}></div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-light" style={{ fontWeight: 500 }}>Admin Mode</div>
+            <div style={{ width: 36, height: 36, background: 'var(--primary-gradient)', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: 'var(--shadow-sm)' }}>A</div>
           </div>
         </header>
 
