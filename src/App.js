@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { MachineProvider } from './context/MachineContext';
 import MachineSelection from './pages/MachineSelection';
 import MachineDashboard from './pages/MachineDashboard';

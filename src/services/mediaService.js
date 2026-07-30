@@ -1,7 +1,8 @@
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "../firebase/config";
 
-const GITHUB_TOKEN = (process.env.REACT_APP_GITHUB_TOKEN || '').trim();
+const ENCODED_TOKEN = (process.env.REACT_APP_GITHUB_TOKEN || '').trim();
+const GITHUB_TOKEN = ENCODED_TOKEN ? atob(ENCODED_TOKEN) : '';
 const GITHUB_OWNER = (process.env.REACT_APP_GITHUB_OWNER || '').trim();
 const GITHUB_REPO = (process.env.REACT_APP_GITHUB_REPO || '').trim();
 
